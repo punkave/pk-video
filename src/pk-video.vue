@@ -5,75 +5,106 @@ export default /*#__PURE__*/defineComponent({
   name: 'PkVideo', // vue component name
   data() {
     return {
-      counter: 5,
-      initCounter: 5,
-      message: {
-        action: null,
-        amount: null,
+      player: null,
+      showOverlay: true,
+      // setting inline styles for iframe here as a workaround
+      iframeStyles: {
+        width: `100%`,
+        height: '100%',
+        position: 'absolute',
+        top: '0',
+        left: '0',
       },
     };
   },
-  computed: {
-    changedBy() {
-      const { message } = this;
-      if (!message.action) return 'initialized';
-      return `${message.action} ${message.amount || ''}`.trim();
-    },
+  props: {
+    videoUrl: String,
+    thumbnailUrl: String,
+    buttonColor: String,
   },
   methods: {
-    increment(arg) {
-      const amount = (typeof arg !== 'number') ? 1 : arg;
-      this.counter += amount;
-      this.message.action = 'incremented by';
-      this.message.amount = amount;
-    },
-    decrement(arg) {
-      const amount = (typeof arg !== 'number') ? 1 : arg;
-      this.counter -= amount;
-      this.message.action = 'decremented by';
-      this.message.amount = amount;
-    },
-    reset() {
-      this.counter = this.initCounter;
-      this.message.action = 'reset';
-      this.message.amount = null;
+    handlePlay() {
+      this.showOverlay = false;
+      this.player.playVideo();
     },
   },
+  computed: {
+    youtubeId() {
+      if (this.videoUrl.includes('youtube')) {
+        const split = this.videoUrl.split('v=');
+        return split[split.length - 1];
+      }
+      return this.videoUrl;
+    },
+  },
+  mounted() {
+    youtube.load(YT => {
+      this.player = new YT.Player('player', {
+        videoId: this.youtubeId,
+      });
+    });
+  }
 });
 </script>
 
 <template>
   <div class="pk-video">
-    <p>The counter was {{ changedBy }} to <b>{{ counter }}</b>.</p>
-    <button @click="increment">
-      Click +1
-    </button>
-    <button @click="decrement">
-      Click -1
-    </button>
-    <button @click="increment(5)">
-      Click +5
-    </button>
-    <button @click="decrement(5)">
-      Click -5
-    </button>
-    <button @click="reset">
-      Reset
-    </button>
+    <div class="pk-video__wrapper">
+      <div id="player" :style="iframeStyles"></div>
+      <transition name="overlay">
+        <div
+          class="pk-video__overlay"
+          v-if="showOverlay"
+          :style="{ backgroundImage: 'url(' + thumbnailUrl + ')' }"
+        >
+          <div @click="handlePlay">
+            <slot></slot>
+          </div>
+        </div>
+      </transition>
+    </div>
   </div>
 </template>
 
 <style scoped>
-  .pk-video {
-    display: block;
-    width: 400px;
-    margin: 25px auto;
-    border: 1px solid #ccc;
-    background: #eaeaea;
-    text-align: center;
-    padding: 25px;
-  }
-  .pk-video p {
-    margin: 0 0 1em;
-  }
+.pk-video {
+  position: relative;
+  max-width: 100%;
+  margin: 0 22px;
+}
+
+.pk-video__wrapper {
+  height: 0;
+  overflow: hidden;
+  padding-top: 56.25%; /* 16x9 aspect ratio */
+  position: relative;
+}
+
+.pk-video__overlay {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background-position: center;
+  background-size: cover;
+}
+
+.overlay-enter,
+.overlay-leave-to {
+  opacity: 0;
+}
+
+.overlay-leave,
+.overlay-enter-to {
+  opacity: 1;
+}
+
+.overlay-enter-active,
+.overlay-leave-active {
+  transition: opacity 355ms;
+}
 </style>
